@@ -5,6 +5,8 @@ const app = express();
 const mongoose = require('mongoose');
 const controller = require('./controllers/claimController');
 
+const PORT = process.env.PORT || 5000;
+
 // connect to mongoDB via dbURI string
 mongoose
   .connect(process.env.MONGO_URI, {
@@ -13,7 +15,7 @@ mongoose
   })
   .then((result) =>
     // only after mongoDB connects do we want our server to listen. otherwise it wouldn't serve anything.
-    app.listen(5000, () => {
+    app.listen(PORT, () => {
       console.log('Connected and listening on port 5000.');
     })
   )
