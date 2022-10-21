@@ -1,9 +1,29 @@
 const express = require('express');
-const path = require('path');
-require('dotenv').config();
 const app = express();
 const mongoose = require('mongoose');
+
+const fs = require('fs');
+const path = require('path');
+require('dotenv').config();
+const cors = require('cors');
 const controller = require('./controllers/claimController');
+const imageController = require('./controllers/imageController');
+
+const multer = require('multer');
+const Image = require('./models/image');
+
+// set up multer for storing uploaded files
+let storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads');
+  },
+  filename: (req, file, cb) => {
+    cb(null, file.fieldname + '-' + Date.now());
+  },
+});
+
+// let upload = multer({ storage: storage });
+const upload = multer({ dest: 'uploads/' });
 
 const PORT = process.env.PORT || 5000;
 
@@ -25,12 +45,43 @@ mongoose
 app.use(express.static(path.join(__dirname + '/public')));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(cors());
 
 // routes
 
 // app.get('/', (req, res) => {
 //   res.send('Welcome to my app');
 // });
+
+app.get('/getimages', imageController.getImages, (req, res) => {
+  res.status(200).json(res.locals.images);
+});
+
+app.post('/upload', upload.single('file'), (req, res, next) => {
+  const image = {
+    img: {
+      data: fs.readFileSync(
+        path.join(__dirname + '/uploads/' + req.file.filename)
+      ),
+      contentType: 'image/png',
+    },
+  };
+  console.log('image', image);
+  console.log('going to uploadImage');
+  Image.create(image)
+    .then((image) => {
+      console.log('saved image');
+      res.status(200).json(image);
+    })
+    .catch((err) => {
+      return next({
+        log: `imageController.uploadImage: ERROR: ${err}`,
+        message: {
+          err: 'Error occured in imageController.uploadImage. Check server logs for more details.',
+        },
+      });
+    });
+});
 
 app.get('/getclaims', controller.getClaims, (req, res) => {
   res.status(200).json(res.locals.claims);
