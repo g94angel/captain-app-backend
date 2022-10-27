@@ -1,10 +1,11 @@
 const mongoose = require('mongoose');
 
 const imageSchema = new mongoose.Schema({
+  id: String,
   // name: String,
   // desc: String,
-  img: {
-    data: Buffer,
+  image: {
+    data: Buffer, // binary data
     contentType: String,
   },
 });

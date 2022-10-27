@@ -1,31 +1,25 @@
-const express = require('express');
-const app = express();
-const mongoose = require('mongoose');
-
-const fs = require('fs');
 const path = require('path');
-require('dotenv').config();
 const cors = require('cors');
+const express = require('express');
+require('dotenv').config();
+const mongoose = require('mongoose');
+// const uuidv4 = require('uuid/v4');
+// const fs = require('fs');
 const controller = require('./controllers/claimController');
-const imageController = require('./controllers/imageController');
+// const imageController = require('./controllers/imageController');
+const imageRoutes = require('./routes/image');
 
-const multer = require('multer');
-const Image = require('./models/image');
-
-// set up multer for storing uploaded files
-let storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads');
-  },
-  filename: (req, file, cb) => {
-    cb(null, file.fieldname + '-' + Date.now());
-  },
-});
-
-// let upload = multer({ storage: storage });
-const upload = multer({ dest: 'uploads/' });
-
+const app = express();
 const PORT = process.env.PORT || 5000;
+// middleware & static files
+app.use(cors());
+app.use(express.static(path.join(__dirname + '/public')));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+// using this to store images
+// const multer = require('multer');
+// const Image = require('./models/image');
 
 // connect to mongoDB via dbURI string
 mongoose
@@ -41,11 +35,18 @@ mongoose
   )
   .catch((err) => console.log(err));
 
-// middleware & static files
-app.use(express.static(path.join(__dirname + '/public')));
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
-app.use(cors());
+// set up multer for storing uploaded files
+// const storage = multer.diskStorage({
+//   destination: (req, file, cb) => {
+//     cb(null, 'uploads');
+//   },
+//   filename: (req, file, cb) => {
+//     cb(null, file.originalname);
+//   },
+// });
+
+// // const upload = multer({ dest: 'uploads/' });
+// const upload = multer({ storage: storage });
 
 // routes
 
@@ -53,35 +54,65 @@ app.use(cors());
 //   res.send('Welcome to my app');
 // });
 
-app.get('/getimages', imageController.getImages, (req, res) => {
-  res.status(200).json(res.locals.images);
-});
+// app.post(
+//   '/newclaim',
+//   upload.single('info'),
+//   (req, res) => {
+//     // upload(req, res, (err) => {
+//     //   console.log(req.body);
+//     //   if (err) console.log(err);
+//     //   else {
+//     // console.log('this is body', req.body);
+//     // console.log('this is file', req.file);
+//     console.log(req.file);
+//     console.log('on backend)');
+//     // const newImage = new Image({
+//     //   name: req.body.name,
+//     //   image: {
+//     //     data: fs.readFileSync('uploads/' + req.file.filename),
+//     //     contentType: 'image/png',
+//     //   },
+//     // });
+//     // newImage
+//     //   .save()
+//     //   .then(() => res.send('successfully uploaded'))
+//     //   .catch((err) => console.log(err));
+//   }
+//   // });
+// );
 
-app.post('/upload', upload.single('file'), (req, res, next) => {
-  const image = {
-    img: {
-      data: fs.readFileSync(
-        path.join(__dirname + '/uploads/' + req.file.filename)
-      ),
-      contentType: 'image/png',
-    },
-  };
-  console.log('image', image);
-  console.log('going to uploadImage');
-  Image.create(image)
-    .then((image) => {
-      console.log('saved image');
-      res.status(200).json(image);
-    })
-    .catch((err) => {
-      return next({
-        log: `imageController.uploadImage: ERROR: ${err}`,
-        message: {
-          err: 'Error occured in imageController.uploadImage. Check server logs for more details.',
-        },
-      });
-    });
-});
+// app.get('/getimages', imageController.getImages, (req, res) => {
+//   res.status(200).json(res.locals.images);
+// });
+
+// app.post('/upload', upload.single('file'), (req, res, next) => {
+//   // console.log('the body', req.body);
+//   // const id = req.body.id;
+//   const image = {
+//     id: req.body.id,
+//     image: {
+//       data: fs.readFileSync(
+//         path.join(__dirname + '/uploads/' + req.file.filename)
+//       ),
+//       contentType: 'image/png',
+//     },
+//   };
+//   console.log('image', image);
+//   console.log('going to uploadImage');
+//   Image.create(image)
+//     .then((image) => {
+//       console.log('saved image');
+//       res.status(200).json(image);
+//     })
+//     .catch((err) => {
+//       return next({
+//         log: `imageController.uploadImage: ERROR: ${err}`,
+//         message: {
+//           err: 'Error occured in imageController.uploadImage. Check server logs for more details.',
+//         },
+//       });
+//     });
+// });
 
 app.get('/getclaims', controller.getClaims, (req, res) => {
   res.status(200).json(res.locals.claims);
