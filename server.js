@@ -59,18 +59,18 @@ app.get('/upload', controller.getImage, async (req, res) => {
 });
 
 app.post('/upload', upload.single('file'), async (req, res) => {
-  console.log('req.body', req.body); // other data
-  console.log('req.file', req.file); // file upload data
+  // console.log('req.body', req.body); // other data
+  // console.log('req.file', req.file); // file upload data
 
   // resize and beautify image we want to send to S3
-  const buffer = await sharp(req.file.buffer)
-    .resize({ height: 1920, width: 1080, fit: 'contain' })
-    .toBuffer();
+  // const buffer = await sharp(req.file.buffer);
+  // .resize({ height: 1920, width: 1080, fit: 'contain' })
+  // .toBuffer();
   const imageName = randomImageName();
   const params = {
     Bucket: bucketName,
     Key: imageName,
-    Body: buffer,
+    Body: req.file.buffer,
     ContentType: req.file.mimetype,
   };
   const command = new PutObjectCommand(params);
