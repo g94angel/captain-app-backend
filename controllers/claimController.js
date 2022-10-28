@@ -1,5 +1,23 @@
 const Claim = require('../models/claim');
 
+const getImage = (req, res, next) => {
+  Claim.findOne({
+    url: req.body.url,
+  })
+    .then((image) => {
+      res.locals.image = image;
+      return next();
+    })
+    .catch((err) => {
+      return next({
+        log: `controller.getImage: ERROR: ${err}`,
+        message: {
+          err: 'Error occured in controller.getImage. Check server logs for more details.',
+        },
+      });
+    });
+};
+
 const getClaims = (req, res, next) => {
   Claim.find()
     // .sort({ createdAt: -1 }) // sorts by created date, newest to oldest
@@ -77,4 +95,5 @@ module.exports = {
   newClaim,
   deleteClaim,
   updateClaim,
+  getImage,
 };

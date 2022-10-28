@@ -36,6 +36,12 @@ const claimSchema = new mongoose.Schema(
     description: {
       type: String,
     },
+    imageName: {
+      type: String,
+    },
+    url: {
+      type: String,
+    },
   },
   { timestamps: true }
 );

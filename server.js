@@ -6,8 +6,37 @@ const mongoose = require('mongoose');
 const path = require('path');
 require('dotenv').config();
 const cors = require('cors');
+const multer = require('multer');
+const crypto = require('crypto');
 const controller = require('./controllers/claimController');
 // const imageController = require('./controllers/imageController');
+// const imageRoutes = require('./routes/image');
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+const {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+} = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const sharp = require('sharp');
+
+const randomImageName = (bytes = 8) =>
+  crypto.randomBytes(bytes).toString('hex');
+
+const bucketName = process.env.BUCKET_NAME;
+const bucketRegion = process.env.BUCKET_REGION;
+const accessKey = process.env.ACCESS_KEY;
+const secretAccessKey = process.env.SECRET_ACCESS_KEY;
+
+const s3 = new S3Client({
+  credentials: {
+    accessKeyId: accessKey,
+    secretAccessKey: secretAccessKey,
+  },
+  region: bucketRegion,
+});
 
 // middleware & static files
 app.use(express.static(path.join(__dirname + '/public')));
@@ -15,8 +44,41 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cors());
 
+// app.use('/api/image', imageRoutes);
+
 // using this to store images
-// const multer = require('multer');
+
+app.get('/upload', controller.getImage, async (req, res) => {
+  const imageName = res.locals.image;
+  const getObjectParams = {
+    Bucket: bucketName,
+    Key: imageName,
+  };
+  const command = new GetObjectCommand(getObjectParams);
+  const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
+});
+
+app.post('/upload', upload.single('file'), async (req, res) => {
+  console.log('req.body', req.body); // other data
+  console.log('req.file', req.file); // file upload data
+
+  // resize and beautify image we want to send to S3
+  const buffer = await sharp(req.file.buffer)
+    .resize({ height: 1920, width: 1080, fit: 'contain' })
+    .toBuffer();
+  const imageName = randomImageName();
+  const params = {
+    Bucket: bucketName,
+    Key: imageName,
+    Body: buffer,
+    ContentType: req.file.mimetype,
+  };
+  const command = new PutObjectCommand(params);
+
+  await s3.send(command);
+  res.send(imageName);
+});
+
 // const Image = require('./models/image');
 
 const PORT = process.env.PORT || 5000;
@@ -114,7 +176,20 @@ mongoose
 //     });
 // });
 
-app.get('/getclaims', controller.getClaims, (req, res) => {
+app.get('/getclaims', controller.getClaims, async (req, res) => {
+  // console.log(res.locals.claims);
+  // const claims = res.locals.claims;
+  for (const claim of res.locals.claims) {
+    if (claim.imageName.length > 0) {
+      const getObjectParams = {
+        Bucket: bucketName,
+        Key: claim.imageName,
+      };
+      const command = new GetObjectCommand(getObjectParams);
+      const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
+      claim.url = url;
+    }
+  }
   res.status(200).json(res.locals.claims);
 });
 
