@@ -18,6 +18,7 @@ const {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
+  DeleteObjectCommand,
 } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const sharp = require('sharp');
@@ -48,15 +49,15 @@ app.use(cors());
 
 // using this to store images
 
-app.get('/upload', controller.getImage, async (req, res) => {
-  const imageName = res.locals.image;
-  const getObjectParams = {
-    Bucket: bucketName,
-    Key: imageName,
-  };
-  const command = new GetObjectCommand(getObjectParams);
-  const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
-});
+// app.get('/upload', controller.getImage, async (req, res) => {
+//   const imageName = res.locals.image;
+//   const getObjectParams = {
+//     Bucket: bucketName,
+//     Key: imageName,
+//   };
+//   const command = new GetObjectCommand(getObjectParams);
+//   const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
+// });
 
 app.post('/upload', upload.single('file'), async (req, res) => {
   // console.log('req.body', req.body); // other data
@@ -67,6 +68,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
   // .resize({ height: 1920, width: 1080, fit: 'contain' })
   // .toBuffer();
   const imageName = randomImageName();
+  console.log(req.file);
   const params = {
     Bucket: bucketName,
     Key: imageName,
@@ -201,7 +203,20 @@ app.put('/updateclaim', controller.updateClaim, (req, res) => {
   res.status(200).json(res.locals.updatedClaim);
 });
 
-app.delete('/deleteclaim/:id', controller.deleteClaim, (req, res) => {
+app.delete('/deleteclaim/:id', controller.deleteClaim, async (req, res) => {
+  // if the deleted claim has an image this code also deletes the image from S3
+
+  const { deletedClaim } = res.locals;
+  console.log('inside server deleted claim', deletedClaim);
+  if (deletedClaim.imageName) {
+    const { imageName } = deletedClaim;
+    const params = {
+      Bucket: bucketName,
+      Key: imageName,
+    };
+    const command = new DeleteObjectCommand(params);
+    await s3.send(command);
+  }
   res.status(200).json(res.locals.deletedClaim);
 });
 

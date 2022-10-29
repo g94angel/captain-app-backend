@@ -76,7 +76,7 @@ const deleteClaim = (req, res, next) => {
   const { id } = req.params;
   Claim.findByIdAndDelete(id)
     .then((deletedClaim) => {
-      console.log('deleted claim', deletedClaim);
+      console.log('deleted claim 1', deletedClaim);
       res.locals.deletedClaim = deletedClaim;
       return next();
     })
