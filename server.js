@@ -13,7 +13,17 @@ const controller = require('./controllers/claimController');
 // const imageRoutes = require('./routes/image');
 
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype.split('/')[0] === 'image') {
+    cb(null, true);
+  } else {
+    cb(new Error('File is not of the correct type'), false);
+  }
+};
+const upload = multer({ storage, fileFilter }).single('file');
+
+const multipleUploads = multer({ storage, fileFilter }).array('files', 10);
+
 const {
   S3Client,
   PutObjectCommand,
@@ -59,7 +69,7 @@ app.use(cors());
 //   const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
 // });
 
-app.post('/upload', upload.single('file'), async (req, res) => {
+app.post('/upload', upload, async (req, res) => {
   // console.log('req.body', req.body); // other data
   // console.log('req.file', req.file); // file upload data
 
@@ -67,6 +77,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
   // const buffer = await sharp(req.file.buffer);
   // .resize({ height: 1920, width: 1080, fit: 'contain' })
   // .toBuffer();
+
   const imageName = randomImageName();
   console.log(req.file);
   const params = {
@@ -79,6 +90,49 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 
   await s3.send(command);
   res.send(imageName);
+});
+
+app.post('/uploads', multipleUploads, async (req, res) => {
+  // console.log('req.body', req.body); // other data
+  // console.log('req.file', req.file); // file upload data
+
+  // resize and beautify image we want to send to S3
+  // const buffer = await sharp(req.file.buffer);
+  // .resize({ height: 1920, width: 1080, fit: 'contain' })
+  // .toBuffer();
+
+  console.log('inside multiple uploads on server');
+
+  // const params = {
+  //   Bucket: bucketName,
+  //   Key: imageName,
+  //   Body: req.file.buffer,
+  //   ContentType: req.file.mimetype,
+  // };
+  let urls = '';
+  const params = req.files.map((file) => {
+    const randNum = randomImageName();
+    urls += `${randNum},`;
+    return {
+      Bucket: bucketName,
+      Key: randNum,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+    };
+  });
+  // console.log('this is params', params);
+  const results = await Promise.all(
+    params.map(async (param) => await s3.send(new PutObjectCommand(param)))
+  );
+  // console.log('these are the results', results);
+  // const command = new PutObjectCommand(params);
+
+  // // await s3.send(command);
+  res.send({
+    data: req.files,
+    msg: 'Successfully uploaded ' + req.files.length + ' files!',
+    urls: urls,
+  });
 });
 
 // const Image = require('./models/image');
@@ -181,17 +235,57 @@ mongoose
 app.get('/getclaims', controller.getClaims, async (req, res) => {
   // console.log(res.locals.claims);
   // const claims = res.locals.claims;
+  // need this for multiple claim
   for (const claim of res.locals.claims) {
-    if (claim.imageName.length > 0) {
+    if (!claim.imageName) {
+      // console.log('no image');
+      continue;
+    }
+    // if there are multiple
+    else if (claim.imageName.includes(',')) {
+      let returnedURLs = '';
+      const newArray = claim.imageName.split(',');
+      for (let i = 0; i < newArray.length; i++) {
+        // console.log(i);
+        // console.log(newArray[i]);
+
+        // console.log('imageName', imageName);
+        // console.log(i);
+        // console.log(newArray[i]);
+        const getObjectParams = {
+          Bucket: bucketName,
+          Key: newArray[i],
+        };
+        // console.log('params', getObjectParams);
+        const command = new GetObjectCommand(getObjectParams);
+        // console.log('command', command);
+        const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
+        // console.log('url', i, url);
+        // console.log('from multiple', url);
+        returnedURLs += `${url},`;
+        // console.log('returned URLs', returnedURLs);
+      }
+      claim.url = returnedURLs;
+      // console.log('this is the claim', claim);
+      // console.log('returned URLs', returnedURLs);
+      // console.log('returned URLS', claim.url);
+    }
+    // need this
+    else if (claim.imageName) {
+      // console.log('one pic here');
+      // console.log(claim);
       const getObjectParams = {
         Bucket: bucketName,
         Key: claim.imageName,
       };
       const command = new GetObjectCommand(getObjectParams);
       const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
+      // console.log(url);
       claim.url = url;
+      // console.log(claim);
     }
   }
+  // console.log(res.locals.claims);
   res.status(200).json(res.locals.claims);
 });
 
