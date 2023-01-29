@@ -8,6 +8,14 @@ const multer = require('multer');
 const crypto = require('crypto');
 const controller = require('./controllers/claimController');
 
+const corsOptions = {
+  origin: '*',
+  credentials: true, //access-control-allow-credentials:true
+  optionSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions)); // Use this after the variable declaration
+
 const storage = multer.memoryStorage();
 const fileFilter = (req, file, cb) => {
   if (file.mimetype.split('/')[0] === 'image') {
@@ -48,7 +56,7 @@ const s3 = new S3Client({
 app.use(express.static(path.join(__dirname + '/public')));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(cors());
+// app.use(cors());
 
 const PORT = process.env.PORT || 5000;
 
