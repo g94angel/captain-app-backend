@@ -85,7 +85,7 @@ app.post('/upload', upload, async (req, res) => {
   // .toBuffer();
 
   const imageName = randomImageName();
-  console.log(req.file);
+  // console.log(req.file);
   const params = {
     Bucket: bucketName,
     Key: imageName,
@@ -174,7 +174,7 @@ app.delete('/deleteclaim/:id', controller.deleteClaim, async (req, res) => {
   // if the deleted claim has an image this code also deletes the image from S3
 
   const { deletedClaim } = res.locals;
-  console.log('inside server deleted claim', deletedClaim);
+  // console.log('inside server deleted claim', deletedClaim);
   if (deletedClaim.imageName) {
     const { imageName } = deletedClaim;
     const params = {
@@ -198,6 +198,6 @@ app.use((err, req, res, next) => {
     message: { err: 'An error occurred' },
   };
   const errorObj = Object.assign({}, defaultErr, err);
-  console.log(errorObj.log);
+  // console.log(errorObj.log);
   return res.status(errorObj.status).json(errorObj.message);
 });

@@ -37,9 +37,9 @@ const getClaims = (req, res, next) => {
 };
 
 const newClaim = (req, res, next) => {
-  console.log('inside newClaim');
+  // console.log('inside newClaim');
   const claimInfo = req.body;
-  console.log(claimInfo);
+  // console.log(claimInfo);
   Claim.create(claimInfo)
     .then((newClaim) => {
       res.locals.newClaim = newClaim;
@@ -76,7 +76,7 @@ const deleteClaim = (req, res, next) => {
   const { id } = req.params;
   Claim.findByIdAndDelete(id)
     .then((deletedClaim) => {
-      console.log('deleted claim 1', deletedClaim);
+      // console.log('deleted claim 1', deletedClaim);
       res.locals.deletedClaim = deletedClaim;
       return next();
     })
